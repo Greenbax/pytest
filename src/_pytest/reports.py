@@ -251,7 +251,52 @@ def _report_unserialization_failure(
     raise RuntimeError(stream.getvalue())
 
 
-@final
+def _format_failed_longrepr(
+    item: Item, call: CallInfo[None], excinfo: ExceptionInfo[BaseException]
+):
+    if call.when == "call":
+        longrepr = item.repr_failure(excinfo)
+    else:
+        # Exception in setup or teardown.
+        longrepr = item._repr_failure_py(
+            excinfo, style=item.config.getoption("tbstyle", "auto")
+        )
+    return longrepr
+
+
+def _format_exception_group_all_skipped_longrepr(
+    item: Item,
+    excinfo: ExceptionInfo[BaseExceptionGroup[BaseException | BaseExceptionGroup]],
+) -> tuple[str, int, str]:
+    r = excinfo._getreprcrash()
+    assert r is not None, (
+        "There should always be a traceback entry for skipping a test."
+    )
+    if all(
+        getattr(skip, "_use_item_location", False) for skip in excinfo.value.exceptions
+    ):
+        path, line = item.reportinfo()[:2]
+        assert line is not None
+        loc = (os.fspath(path), line + 1)
+        default_msg = "skipped"
+    else:
+        loc = (str(r.path), r.lineno)
+        default_msg = r.message
+
+    # Get all unique skip messages.
+    msgs: list[str] = []
+    for exception in excinfo.value.exceptions:
+        m = getattr(exception, "msg", None) or (
+            exception.args[0] if exception.args else None
+        )
+        if m and m not in msgs:
+            msgs.append(m)
+
+    reason = "; ".join(msgs) if msgs else default_msg
+    longrepr = (*loc, reason)
+    return longrepr
+
+
 class TestReport(BaseReport):
     """Basic test report object (also used for setup and teardown calls if
     they fail).
@@ -361,9 +406,9 @@ class TestReport(BaseReport):
             elif isinstance(excinfo.value, skip.Exception):
                 outcome = "skipped"
                 r = excinfo._getreprcrash()
-                assert (
-                    r is not None
-                ), "There should always be a traceback entry for skipping a test."
+                assert r is not None, (
+                    "There should always be a traceback entry for skipping a test."
+                )
                 if excinfo.value._use_item_location:
                     path, line = item.reportinfo()[:2]
                     assert line is not None

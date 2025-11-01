@@ -48,6 +48,9 @@ Built-in fixtures
    :fixture:`pytestconfig`
         Access to configuration values, pluginmanager and plugin hooks.
 
+   :fixture:`subtests`
+        Enable declaring subtests inside test functions.
+
    :fixture:`record_property`
        Add extra properties to the test.
 

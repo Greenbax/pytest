@@ -68,6 +68,9 @@ from _pytest.reports import TestReport
 from _pytest.runner import CallInfo
 from _pytest.stash import Stash
 from _pytest.stash import StashKey
+from _pytest.subtests import SubtestReport
+from _pytest.subtests import Subtests
+from _pytest.terminal import TerminalReporter
 from _pytest.terminal import TestShortLogReport
 from _pytest.tmpdir import TempPathFactory
 from _pytest.warning_types import PytestAssertRewriteWarning
@@ -158,8 +161,8 @@ __all__ = [
     "skip",
     "Stash",
     "StashKey",
-    "version_tuple",
-    "TempdirFactory",
+    "SubtestReport",
+    "Subtests",
     "TempPathFactory",
     "Testdir",
     "TestReport",
