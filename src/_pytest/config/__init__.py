@@ -19,6 +19,7 @@ import dataclasses
 import enum
 from functools import lru_cache
 import glob
+import importlib
 import importlib.metadata
 import inspect
 import os
@@ -38,14 +39,12 @@ from typing import TextIO
 from typing import TYPE_CHECKING
 import warnings
 
-import pluggy
 from pluggy import HookimplMarker
 from pluggy import HookimplOpts
 from pluggy import HookspecMarker
 from pluggy import HookspecOpts
 from pluggy import PluginManager
 
-from .compat import PathAwareHookProxy
 from .exceptions import PrintHelp as PrintHelp
 from .exceptions import UsageError as UsageError
 from .findpaths import ConfigValue
@@ -57,6 +56,8 @@ from _pytest._code import filter_traceback
 from _pytest._code.code import TracebackStyle
 from _pytest._io import TerminalWriter
 from _pytest.compat import assert_never
+from _pytest.compat import deprecated
+from _pytest.compat import NOTSET
 from _pytest.config.argparsing import Argument
 from _pytest.config.argparsing import FILE_OR_DIR
 from _pytest.config.argparsing import Parser
@@ -814,6 +815,12 @@ class PytestPluginManager(PluginManager):
             if name in essential_plugins:
                 raise UsageError(f"plugin {name} cannot be disabled")
 
+            if name.endswith("conftest.py"):
+                raise UsageError(
+                    f"Blocking conftest files using -p is not supported: -p no:{name}\n"
+                    "conftest.py files are not plugins and cannot be disabled via -p.\n"
+                )
+
             # PR #4304: remove stepwise if cacheprovider is blocked.
             if name == "cacheprovider":
                 self.set_blocked("stepwise")
@@ -876,7 +883,13 @@ class PytestPluginManager(PluginManager):
                 return
 
         try:
-            __import__(importspec)
+            if sys.version_info >= (3, 11):
+                mod = importlib.import_module(importspec)
+            else:
+                # On Python 3.10, import_module breaks
+                # testing/test_config.py::test_disable_plugin_autoload.
+                __import__(importspec)
+                mod = sys.modules[importspec]
         except ImportError as e:
             raise ImportError(
                 f'Error importing plugin "{modname}": {e.args[0]}'
@@ -885,7 +898,6 @@ class PytestPluginManager(PluginManager):
         except Skipped as e:
             self.skipped_plugins.append((modname, e.msg or ""))
         else:
-            mod = sys.modules[importspec]
             self.register(mod, modname)
 
 
@@ -908,14 +920,6 @@ def _get_plugin_specs_as_list(
     raise UsageError(
         f"Plugins may be specified as a sequence or a ','-separated string of plugin names. Got: {specs!r}"
     )
-
-
-class Notset:
-    def __repr__(self):
-        return "<NOTSET>"
-
-
-notset = Notset()
 
 
 def _iter_rewritable_modules(package_files: Iterable[str]) -> Iterator[str]:
@@ -1115,9 +1119,9 @@ class Config:
         self._store = self.stash
 
         self.trace = self.pluginmanager.trace.root.get("config")
-        self.hook: pluggy.HookRelay = PathAwareHookProxy(self.pluginmanager.hook)  # type: ignore[assignment]
+        self.hook = self.pluginmanager.hook
         self._inicache: dict[str, Any] = {}
-        self._opt2dest: dict[str, str] = {}
+        self._inicfg: ConfigDict = {}
         self._cleanup_stack = contextlib.ExitStack()
         self.pluginmanager.register(self, "pytestconfig")
         self._configured = False
@@ -1126,6 +1130,24 @@ class Config:
         )
         self.args_source = Config.ArgsSource.ARGS
         self.args: list[str] = []
+
+    if TYPE_CHECKING:
+
+        @deprecated(
+            "config.inicfg is deprecated, use config.getini() to access configuration values instead.",
+        )
+        @property
+        def inicfg(self) -> _DeprecatedInicfgProxy:
+            raise NotImplementedError()
+    else:
+
+        @property
+        def inicfg(self) -> _DeprecatedInicfgProxy:
+            warnings.warn(
+                _pytest.deprecated.CONFIG_INICFG,
+                stacklevel=2,
+            )
+            return _DeprecatedInicfgProxy(self)
 
     @property
     def inicfg(self) -> _DeprecatedInicfgProxy:
@@ -1246,12 +1268,8 @@ class Config:
         return config
 
     def _processopt(self, opt: Argument) -> None:
-        for name in opt._short_opts + opt._long_opts:
-            self._opt2dest[name] = opt.dest
-
-        if hasattr(opt, "default"):
-            if not hasattr(self.option, opt.dest):
-                setattr(self.option, opt.dest, opt.default)
+        if not hasattr(self.option, opt.dest):
+            setattr(self.option, opt.dest, opt.default)
 
     @hookimpl(trylast=True)
     def pytest_load_initial_conftests(self, early_config: Config) -> None:
@@ -1412,11 +1430,6 @@ class Config:
         if minver:
             # Imported lazily to improve start-up time.
             from packaging.version import Version
-
-            if not isinstance(minver, str):
-                raise pytest.UsageError(
-                    f"{self.inipath}: 'minversion' must be a single value"
-                )
 
             if Version(minver) > Version(pytest.__version__):
                 raise pytest.UsageError(
@@ -1871,7 +1884,7 @@ class Config:
             values.append(relroot)
         return values
 
-    def getoption(self, name: str, default: Any = notset, skip: bool = False):
+    def getoption(self, name: str, default: Any = NOTSET, skip: bool = False):
         """Return command line option value.
 
         :param name: Name of the option. You may also specify
@@ -1881,14 +1894,14 @@ class Config:
         :param skip: If ``True``, raise :func:`pytest.skip` if option is undeclared or has a ``None`` value.
             Note that even if ``True``, if a default was specified it will be returned instead of a skip.
         """
-        name = self._opt2dest.get(name, name)
+        name = self._parser._opt2dest.get(name, name)
         try:
             val = getattr(self.option, name)
             if val is None and skip:
                 raise AttributeError(name)
             return val
         except AttributeError as e:
-            if default is not notset:
+            if default is not NOTSET:
                 return default
             if skip:
                 import pytest
@@ -2165,7 +2178,7 @@ def _resolve_warning_category(category: str) -> type[Warning]:
         klass = category
     else:
         module, _, klass = category.rpartition(".")
-        m = __import__(module, None, None, [klass])
+        m = importlib.import_module(module)
     cat = getattr(m, klass)
     if not issubclass(cat, Warning):
         raise UsageError(f"{cat} is not a Warning subclass")

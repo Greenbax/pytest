@@ -39,13 +39,6 @@ YIELD_FIXTURE = PytestDeprecationWarning(
 PRIVATE = PytestDeprecationWarning("A private pytest class or function was used.")
 
 
-HOOK_LEGACY_PATH_ARG = UnformattedWarning(
-    PytestRemovedIn9Warning,
-    "The ({pylib_path_arg}: py.path.local) argument is deprecated, please use ({pathlib_path_arg}: pathlib.Path)\n"
-    "see https://docs.pytest.org/en/latest/deprecations.html"
-    "#py-path-local-arguments-for-hooks-replaced-with-pathlib-path",
-)
-
 NODE_CTOR_FSPATH_ARG = UnformattedWarning(
     PytestRemovedIn9Warning,
     "The (fspath: py.path.local) argument to {node_type_name} is deprecated. "
@@ -63,16 +56,24 @@ HOOK_LEGACY_MARKING = UnformattedWarning(
     "#configuring-hook-specs-impls-using-markers",
 )
 
-MARKED_FIXTURE = PytestRemovedIn9Warning(
-    "Marks applied to fixtures have no effect\n"
-    "See docs: https://docs.pytest.org/en/stable/deprecations.html#applying-a-mark-to-a-fixture-function"
-)
-
 MONKEYPATCH_LEGACY_NAMESPACE_PACKAGES = PytestRemovedIn10Warning(
     "monkeypatch.syspath_prepend() called with pkg_resources legacy namespace packages detected.\n"
     "Legacy namespace packages (using pkg_resources.declare_namespace) are deprecated.\n"
     "Please use native namespace packages (PEP 420) instead.\n"
     "See https://docs.pytest.org/en/stable/deprecations.html#monkeypatch-fixup-namespace-packages"
+)
+
+PARAMETRIZE_NON_COLLECTION_ITERABLE = UnformattedWarning(
+    PytestRemovedIn10Warning,
+    "Passing a non-Collection iterable to parametrize is deprecated.\n"
+    "Test: {nodeid}, argvalues type: {type_name}\n"
+    "Please convert to a list or tuple.\n"
+    "See https://docs.pytest.org/en/stable/deprecations.html#parametrize-iterators",
+)
+
+CONFIG_INICFG = PytestRemovedIn10Warning(
+    "config.inicfg is deprecated, use config.getini() to access configuration values instead.\n"
+    "See https://docs.pytest.org/en/stable/deprecations.html#config-inicfg"
 )
 
 # You want to make some `__init__` or function "private".

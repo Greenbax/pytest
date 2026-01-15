@@ -10,9 +10,6 @@ include =
   *\Lib\site-packages\pytest.py
 parallel = 1
 branch = 1
-# The sysmon core (default since Python 3.14) is much slower.
-# Perhaps: https://github.com/coveragepy/coveragepy/issues/2082
-core = ctrace
 
 [paths]
 source = src/
@@ -28,7 +25,6 @@ exclude_lines =
     ^\s*raise NotImplementedError\b
     ^\s*return NotImplemented\b
     ^\s*assert False(,|$)
-    ^\s*case unreachable:
     ^\s*assert_never\(
 
     ^\s*if TYPE_CHECKING:

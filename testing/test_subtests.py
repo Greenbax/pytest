@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from enum import Enum
+import json
 import sys
 import json
 from enum import Enum

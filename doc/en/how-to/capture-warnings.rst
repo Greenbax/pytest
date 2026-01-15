@@ -91,9 +91,9 @@ all other warnings into errors.
 
         [pytest]
         filterwarnings = [
-            "error",
-            "ignore::UserWarning",
-            # note the use of single quote below to denote "raw" strings in TOML
+            'error',
+            'ignore::UserWarning',
+            # Note the use of single quote below to denote "raw" strings in TOML.
             'ignore:function ham\(\) is deprecated:DeprecationWarning',
         ]
 
@@ -286,8 +286,8 @@ Ensuring code triggers a deprecation warning
 --------------------------------------------
 
 You can also use :func:`pytest.deprecated_call` for checking
-that a certain function call triggers a ``DeprecationWarning`` or
-``PendingDeprecationWarning``:
+that a certain function call triggers a ``DeprecationWarning``, ``PendingDeprecationWarning`` or
+``FutureWarning``:
 
 .. code-block:: python
 
