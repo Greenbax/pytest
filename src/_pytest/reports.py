@@ -251,7 +251,6 @@ def _report_unserialization_failure(
     raise RuntimeError(stream.getvalue())
 
 
-@final
 class TestReport(BaseReport):
     """Basic test report object (also used for setup and teardown calls if
     they fail).
@@ -361,9 +360,9 @@ class TestReport(BaseReport):
             elif isinstance(excinfo.value, skip.Exception):
                 outcome = "skipped"
                 r = excinfo._getreprcrash()
-                assert (
-                    r is not None
-                ), "There should always be a traceback entry for skipping a test."
+                assert r is not None, (
+                    "There should always be a traceback entry for skipping a test."
+                )
                 if excinfo.value._use_item_location:
                     path, line = item.reportinfo()[:2]
                     assert line is not None

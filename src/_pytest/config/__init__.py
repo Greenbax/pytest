@@ -272,6 +272,7 @@ default_plugins = (
     "unraisableexception",
     "threadexception",
     "faulthandler",
+    "subtests",
 )
 
 builtin_plugins = set(default_plugins)
@@ -840,9 +841,9 @@ class PytestPluginManager(PluginManager):
         # "terminal" or "capture".  Those plugins are registered under their
         # basename for historic purposes but must be imported with the
         # _pytest prefix.
-        assert isinstance(
-            modname, str
-        ), f"module name as text required, got {modname!r}"
+        assert isinstance(modname, str), (
+            f"module name as text required, got {modname!r}"
+        )
         if self.is_blocked(modname) or self.get_plugin(modname) is not None:
             return
 
@@ -1485,9 +1486,9 @@ class Config:
 
     def parse(self, args: list[str], addopts: bool = True) -> None:
         # Parse given cmdline arguments into this config object.
-        assert (
-            self.args == []
-        ), "can only parse cmdline args at most once per Config object"
+        assert self.args == [], (
+            "can only parse cmdline args at most once per Config object"
+        )
         self.hook.pytest_addhooks.call_historic(
             kwargs=dict(pluginmanager=self.pluginmanager)
         )
@@ -1716,6 +1717,8 @@ class Config:
     VERBOSITY_ASSERTIONS: Final = "assertions"
     #: Verbosity type for test case execution (see :confval:`verbosity_test_cases`).
     VERBOSITY_TEST_CASES: Final = "test_cases"
+    #: Verbosity type for failed subtests (see :confval:`verbosity_subtests`).
+    VERBOSITY_SUBTESTS: Final = "subtests"
     _VERBOSITY_INI_DEFAULT: Final = "auto"
 
     def get_verbosity(self, verbosity_type: str | None = None) -> int:
