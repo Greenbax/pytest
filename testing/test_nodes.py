@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
-from typing import cast
 import warnings
 
 from _pytest import nodes
@@ -25,10 +24,10 @@ def test_node_direct_construction_deprecated() -> None:
     with pytest.raises(
         OutcomeException,
         match=(
-            "Direct construction of _pytest.nodes.Node has been deprecated, please "
-            "use _pytest.nodes.Node.from_parent.\nSee "
-            "https://docs.pytest.org/en/stable/deprecations.html#node-construction-changed-to-node-from-parent"
-            " for more details."
+            r"Direct construction of _pytest\.nodes\.Node has been deprecated, please "
+            r"use _pytest\.nodes\.Node\.from_parent.\nSee "
+            r"https://docs\.pytest\.org/en/stable/deprecations\.html#node-construction-changed-to-node-from-parent"
+            r" for more details\."
         ),
     ):
         nodes.Node(None, session=None)  # type: ignore[arg-type]
@@ -103,24 +102,15 @@ def test__check_initialpaths_for_relpath() -> None:
     """Ensure that it handles dirs, and does not always use dirname."""
     cwd = Path.cwd()
 
-    class FakeSession1:
-        _initialpaths = frozenset({cwd})
+    initial_paths = frozenset({cwd})
 
-    session = cast(pytest.Session, FakeSession1)
-
-    assert nodes._check_initialpaths_for_relpath(session, cwd) == ""
+    assert nodes._check_initialpaths_for_relpath(initial_paths, cwd) == ""
 
     sub = cwd / "file"
-
-    class FakeSession2:
-        _initialpaths = frozenset({cwd})
-
-    session = cast(pytest.Session, FakeSession2)
-
-    assert nodes._check_initialpaths_for_relpath(session, sub) == "file"
+    assert nodes._check_initialpaths_for_relpath(initial_paths, sub) == "file"
 
     outside = Path("/outside-this-does-not-exist")
-    assert nodes._check_initialpaths_for_relpath(session, outside) is None
+    assert nodes._check_initialpaths_for_relpath(initial_paths, outside) is None
 
 
 def test_failure_with_changed_cwd(pytester: Pytester) -> None:

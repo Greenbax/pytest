@@ -34,6 +34,7 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",
     "sphinx_removed_in",
+    "sphinx_inline_tabs",
     "sphinxcontrib_trio",
     "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
     "sphinx_issues",  # implements `:issue:`, `:pr:` and other GH-related roles
@@ -75,6 +76,7 @@ nitpick_ignore = [
     ("py:class", "_pytest._code.code.TerminalRepr"),
     ("py:class", "TerminalRepr"),
     ("py:class", "_pytest.fixtures.FixtureFunctionMarker"),
+    ("py:class", "_pytest.fixtures.FixtureFunctionDefinition"),
     ("py:class", "_pytest.logging.LogCaptureHandler"),
     ("py:class", "_pytest.mark.structures.ParameterSet"),
     # Intentionally undocumented/private
@@ -105,6 +107,8 @@ nitpick_ignore = [
     ("py:obj", "_pytest.fixtures.FixtureValue"),
     ("py:obj", "_pytest.stash.T"),
     ("py:class", "_ScopeName"),
+    ("py:class", "BaseExcT_1"),
+    ("py:class", "ExcT_1"),
 ]
 
 add_module_names = False

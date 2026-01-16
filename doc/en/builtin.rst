@@ -12,13 +12,13 @@ For information on plugin hooks and objects, see :ref:`plugins`.
 
 For information on the ``pytest.mark`` mechanism, see :ref:`mark`.
 
-For information about fixtures, see :ref:`fixtures`. To see a complete list of available fixtures (add ``-v`` to also see fixtures with leading ``_``), type :
+For information about fixtures, see :ref:`fixtures`. To see a complete list of available fixtures (add :option:`-v` to also see fixtures with leading ``_``), type :
 
 .. code-block:: pytest
 
     $ pytest  --fixtures -v
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y -- $PYTHON_PREFIX/bin/python
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y -- $PYTHON_PREFIX/bin/python
     cachedir: .pytest_cache
     rootdir: /home/sweet/project
     collected 0 items

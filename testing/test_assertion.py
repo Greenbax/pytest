@@ -1,10 +1,10 @@
 # mypy: allow-untyped-defs
 from __future__ import annotations
 
+from collections.abc import MutableSequence
 import sys
 import textwrap
 from typing import Any
-from typing import MutableSequence
 from typing import NamedTuple
 
 import attr
@@ -218,10 +218,36 @@ class TestImportHookInstallation:
         assert result.ret == 0
 
     @pytest.mark.parametrize("mode", ["plain", "rewrite"])
+    @pytest.mark.parametrize("disable_plugin_autoload", ["env_var", "cli", ""])
+    @pytest.mark.parametrize("explicit_specify", ["env_var", "cli", ""])
     def test_installed_plugin_rewrite(
-        self, pytester: Pytester, mode, monkeypatch
+        self,
+        pytester: Pytester,
+        mode: str,
+        monkeypatch: pytest.MonkeyPatch,
+        disable_plugin_autoload: str,
+        explicit_specify: str,
     ) -> None:
-        monkeypatch.delenv("PYTEST_DISABLE_PLUGIN_AUTOLOAD", raising=False)
+        args = ["mainwrapper.py", "-s", f"--assert={mode}"]
+        if disable_plugin_autoload == "env_var":
+            monkeypatch.setenv("PYTEST_DISABLE_PLUGIN_AUTOLOAD", "1")
+        elif disable_plugin_autoload == "cli":
+            monkeypatch.delenv("PYTEST_DISABLE_PLUGIN_AUTOLOAD", raising=False)
+            args.append("--disable-plugin-autoload")
+        else:
+            assert disable_plugin_autoload == ""
+            monkeypatch.delenv("PYTEST_DISABLE_PLUGIN_AUTOLOAD", raising=False)
+
+        name = "spamplugin"
+
+        if explicit_specify == "env_var":
+            monkeypatch.setenv("PYTEST_PLUGINS", name)
+        elif explicit_specify == "cli":
+            args.append("-p")
+            args.append(name)
+        else:
+            assert explicit_specify == ""
+
         # Make sure the hook is installed early enough so that plugins
         # installed via distribution package are rewritten.
         pytester.mkdir("hampkg")
@@ -250,7 +276,7 @@ class TestImportHookInstallation:
             import pytest
 
             class DummyEntryPoint(object):
-                name = 'spam'
+                name = 'spamplugin'
                 module_name = 'spam.py'
                 group = 'pytest11'
 
@@ -275,20 +301,29 @@ class TestImportHookInstallation:
                 check_first([10, 30], 30)
 
             def test2(check_first2):
-                check_first([10, 30], 30)
+                check_first2([10, 30], 30)
             """,
         }
         pytester.makepyfile(**contents)
-        result = pytester.run(
-            sys.executable, "mainwrapper.py", "-s", f"--assert={mode}"
-        )
+        result = pytester.run(sys.executable, *args)
         if mode == "plain":
             expected = "E       AssertionError"
         elif mode == "rewrite":
             expected = "*assert 10 == 30*"
         else:
             assert 0
-        result.stdout.fnmatch_lines([expected])
+
+        if not disable_plugin_autoload or explicit_specify:
+            result.assert_outcomes(failed=2)
+            result.stdout.fnmatch_lines([expected, expected])
+        else:
+            result.assert_outcomes(errors=2)
+            result.stdout.fnmatch_lines(
+                [
+                    "E       fixture 'check_first' not found",
+                    "E       fixture 'check_first2' not found",
+                ]
+            )
 
     def test_rewrite_ast(self, pytester: Pytester) -> None:
         pytester.mkdir("pkg")
@@ -531,6 +566,11 @@ class TestAssert_reprcompare:
         monkeypatch.setenv("CI", "true")
         result = pytester.runpytest()
         result.stdout.fnmatch_lines(["E         Full diff:"])
+
+        # Setting CI to empty string is same as having it undefined
+        monkeypatch.setenv("CI", "")
+        result = pytester.runpytest()
+        result.stdout.fnmatch_lines(["E         Use -v to get more diff"])
 
         monkeypatch.delenv("CI", raising=False)
         result = pytester.runpytest()
@@ -1354,6 +1394,17 @@ class TestTruncateExplanation:
         assert result == expl
         assert "truncated" not in result[-1]
 
+    def test_truncates_full_line_because_of_max_chars(self) -> None:
+        """A line is fully truncated because of the max_chars value."""
+        expl = ["a" * 10, "b" * 71]
+        result = truncate._truncate_explanation(expl, max_lines=10, max_chars=10)
+        assert result == [
+            "a" * 10,
+            "...",
+            "",
+            "...Full output truncated (1 line hidden), use '-vv' to show",
+        ]
+
     def test_truncates_edgecase_when_truncation_message_makes_the_result_longer_for_chars(
         self,
     ) -> None:
@@ -1406,15 +1457,14 @@ class TestTruncateExplanation:
         line_len = 100
         expected_truncated_lines = 2
         pytester.makepyfile(
-            r"""
+            rf"""
             def test_many_lines():
-                a = list([str(i)[0] * %d for i in range(%d)])
+                a = list([str(i)[0] * {line_len} for i in range({line_count})])
                 b = a[::2]
                 a = '\n'.join(map(str, a))
                 b = '\n'.join(map(str, b))
                 assert a == b
         """
-            % (line_len, line_count)
         )
         monkeypatch.delenv("CI", raising=False)
 
@@ -1424,16 +1474,87 @@ class TestTruncateExplanation:
             [
                 "*+ 1*",
                 "*+ 3*",
-                "*truncated (%d lines hidden)*use*-vv*" % expected_truncated_lines,
+                f"*truncated ({expected_truncated_lines} lines hidden)*use*-vv*",
             ]
         )
 
         result = pytester.runpytest("-vv")
         result.stdout.fnmatch_lines(["* 6*"])
 
+        # Setting CI to empty string is same as having it undefined
+        monkeypatch.setenv("CI", "")
+        result = pytester.runpytest()
+        result.stdout.fnmatch_lines(
+            [
+                "*+ 1*",
+                "*+ 3*",
+                f"*truncated ({expected_truncated_lines} lines hidden)*use*-vv*",
+            ]
+        )
+
         monkeypatch.setenv("CI", "1")
         result = pytester.runpytest()
         result.stdout.fnmatch_lines(["* 6*"])
+
+    @pytest.mark.parametrize(
+        ["truncation_lines", "truncation_chars", "expected_lines_hidden"],
+        (
+            (3, None, 3),
+            (4, None, 0),
+            (0, None, 0),
+            (None, 8, 6),
+            (None, 9, 0),
+            (None, 0, 0),
+            (0, 0, 0),
+            (0, 1000, 0),
+            (1000, 0, 0),
+        ),
+    )
+    def test_truncation_with_ini(
+        self,
+        monkeypatch,
+        pytester: Pytester,
+        truncation_lines: int | None,
+        truncation_chars: int | None,
+        expected_lines_hidden: int,
+    ) -> None:
+        pytester.makepyfile(
+            """\
+            string_a = "123456789\\n23456789\\n3"
+            string_b = "123456789\\n23456789\\n4"
+
+            def test():
+                assert string_a == string_b
+            """
+        )
+
+        # This test produces 6 lines of diff output or 79 characters
+        # So the effect should be when threshold is < 4 lines (considering 2 additional lines for explanation)
+        # Or < 9 characters (considering 70 additional characters for explanation)
+
+        monkeypatch.delenv("CI", raising=False)
+
+        ini = "[pytest]\n"
+        if truncation_lines is not None:
+            ini += f"truncation_limit_lines = {truncation_lines}\n"
+        if truncation_chars is not None:
+            ini += f"truncation_limit_chars = {truncation_chars}\n"
+        pytester.makeini(ini)
+
+        result = pytester.runpytest()
+
+        if expected_lines_hidden != 0:
+            result.stdout.fnmatch_lines(
+                [f"*truncated ({expected_lines_hidden} lines hidden)*"]
+            )
+        else:
+            result.stdout.no_fnmatch_line("*truncated*")
+            result.stdout.fnmatch_lines(
+                [
+                    "*- 4*",
+                    "*+ 3*",
+                ]
+            )
 
 
 def test_python25_compile_issue257(pytester: Pytester) -> None:
@@ -1958,6 +2079,16 @@ def test_reprcompare_verbose_long() -> None:
                 "{bold}{red}E         {reset}{light-gray} {hl-reset} {{{endline}{reset}",
                 "{bold}{red}E         {light-gray} {hl-reset}     'number-is-1': 1,{endline}{reset}",
                 "{bold}{red}E         {light-green}+     'number-is-5': 5,{hl-reset}{endline}{reset}",
+            ],
+        ),
+        (
+            """
+            def test():
+                assert "abcd" == "abce"
+            """,
+            [
+                "{bold}{red}E         {reset}{light-red}- abce{hl-reset}{endline}{reset}",
+                "{bold}{red}E         {light-green}+ abcd{hl-reset}{endline}{reset}",
             ],
         ),
     ),

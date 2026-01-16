@@ -42,7 +42,7 @@ in most cases without having to modify existing code:
 
 * Obtain :ref:`more informative tracebacks <tbreportdemo>`;
 * :ref:`stdout and stderr <captures>` capturing;
-* :ref:`Test selection options <select-tests>` using ``-k`` and ``-m`` flags;
+* :ref:`Test selection options <select-tests>` using :option:`-k` and :option:`-m` flags;
 * :ref:`maxfail`;
 * :ref:`--pdb <pdb-option>` command-line option for debugging on test failures
   (see :ref:`note <pdb-unittest-note>` below);
@@ -137,7 +137,7 @@ the ``self.db`` values in the traceback:
 
     $ pytest test_unittest_db.py
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y
     rootdir: /home/sweet/project
     collected 2 items
 
@@ -151,6 +151,7 @@ the ``self.db`` values in the traceback:
         def test_method1(self):
             assert hasattr(self, "db")
     >       assert 0, self.db  # fail for demo purposes
+            ^^^^^^^^^^^^^^^^^
     E       AssertionError: <conftest.db_class.<locals>.DummyDB object at 0xdeadbeef0001>
     E       assert 0
 
@@ -161,6 +162,7 @@ the ``self.db`` values in the traceback:
 
         def test_method2(self):
     >       assert 0, self.db  # fail for demo purposes
+            ^^^^^^^^^^^^^^^^^
     E       AssertionError: <conftest.db_class.<locals>.DummyDB object at 0xdeadbeef0001>
     E       assert 0
 

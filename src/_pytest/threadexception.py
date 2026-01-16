@@ -1,65 +1,33 @@
 from __future__ import annotations
 
+import collections
+from collections.abc import Callable
+import functools
+import sys
 import threading
 import traceback
-from types import TracebackType
-from typing import Any
-from typing import Callable
-from typing import Generator
+from typing import NamedTuple
 from typing import TYPE_CHECKING
 import warnings
 
+from _pytest.config import Config
+from _pytest.nodes import Item
+from _pytest.stash import StashKey
+from _pytest.tracemalloc import tracemalloc_message
 import pytest
 
 
 if TYPE_CHECKING:
-    from typing_extensions import Self
+    pass
+
+if sys.version_info < (3, 11):
+    from exceptiongroup import ExceptionGroup
 
 
-# Copied from cpython/Lib/test/support/threading_helper.py, with modifications.
-class catch_threading_exception:
-    """Context manager catching threading.Thread exception using
-    threading.excepthook.
-
-    Storing exc_value using a custom hook can create a reference cycle. The
-    reference cycle is broken explicitly when the context manager exits.
-
-    Storing thread using a custom hook can resurrect it if it is set to an
-    object which is being finalized. Exiting the context manager clears the
-    stored object.
-
-    Usage:
-        with threading_helper.catch_threading_exception() as cm:
-            # code spawning a thread which raises an exception
-            ...
-            # check the thread exception: use cm.args
-            ...
-        # cm.args attribute no longer exists at this point
-        # (to break a reference cycle)
-    """
-
-    def __init__(self) -> None:
-        self.args: threading.ExceptHookArgs | None = None
-        self._old_hook: Callable[[threading.ExceptHookArgs], Any] | None = None
-
-    def _hook(self, args: threading.ExceptHookArgs) -> None:
-        self.args = args
-
-    def __enter__(self) -> Self:
-        self._old_hook = threading.excepthook
-        threading.excepthook = self._hook
-        return self
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        assert self._old_hook is not None
-        threading.excepthook = self._old_hook
-        self._old_hook = None
-        del self.args
+class ThreadExceptionMeta(NamedTuple):
+    msg: str
+    cause_msg: str
+    exc_value: BaseException | None
 
 
 def thread_exception_runtest_hook() -> Generator[None]:
@@ -80,6 +48,22 @@ def thread_exception_runtest_hook() -> Generator[None]:
                     )
                 )
                 warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+            except pytest.PytestUnhandledThreadExceptionWarning as e:
+                # This except happens when the warning is treated as an error (e.g. `-Werror`).
+                if meta.exc_value is not None:
+                    # Exceptions have a better way to show the traceback, but
+                    # warnings do not, so hide the traceback from the msg and
+                    # set the cause so the traceback shows up in the right place.
+                    e.args = (meta.cause_msg,)
+                    e.__cause__ = meta.exc_value
+                errors.append(e)
+
+        if len(errors) == 1:
+            raise errors[0]
+        if errors:
+            raise ExceptionGroup("multiple thread exception warnings", errors)
+    finally:
+        del errors, meta, hook_error
 
 
 @pytest.hookimpl(wrapper=True, trylast=True)

@@ -433,7 +433,7 @@ marked ``smtp_connection`` fixture function.  Running the test looks like this:
 
     $ pytest test_module.py
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y
     rootdir: /home/sweet/project
     collected 2 items
 
@@ -449,6 +449,7 @@ marked ``smtp_connection`` fixture function.  Running the test looks like this:
             assert response == 250
             assert b"smtp.gmail.com" in msg
     >       assert 0  # for demo purposes
+            ^^^^^^^^
     E       assert 0
 
     test_module.py:7: AssertionError
@@ -460,6 +461,7 @@ marked ``smtp_connection`` fixture function.  Running the test looks like this:
             response, msg = smtp_connection.noop()
             assert response == 250
     >       assert 0  # for demo purposes
+            ^^^^^^^^
     E       assert 0
 
     test_module.py:13: AssertionError
@@ -771,7 +773,7 @@ For yield fixtures, the first teardown code to run is from the right-most fixtur
 
     $ pytest -s test_finalizers.py
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y
     rootdir: /home/sweet/project
     collected 1 item
 
@@ -805,7 +807,7 @@ For finalizers, the first fixture to run is last call to `request.addfinalizer`.
 
     $ pytest -s test_finalizers.py
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y
     rootdir: /home/sweet/project
     collected 1 item
 
@@ -1308,6 +1310,7 @@ So let's just do another run:
             assert response == 250
             assert b"smtp.gmail.com" in msg
     >       assert 0  # for demo purposes
+            ^^^^^^^^
     E       assert 0
 
     test_module.py:7: AssertionError
@@ -1319,6 +1322,7 @@ So let's just do another run:
             response, msg = smtp_connection.noop()
             assert response == 250
     >       assert 0  # for demo purposes
+            ^^^^^^^^
     E       assert 0
 
     test_module.py:13: AssertionError
@@ -1343,6 +1347,7 @@ So let's just do another run:
             response, msg = smtp_connection.noop()
             assert response == 250
     >       assert 0  # for demo purposes
+            ^^^^^^^^
     E       assert 0
 
     test_module.py:13: AssertionError
@@ -1363,9 +1368,9 @@ different server string is expected than what arrived.
 pytest will build a string that is the test ID for each fixture value
 in a parametrized fixture, e.g. ``test_ehlo[smtp.gmail.com]`` and
 ``test_ehlo[mail.python.org]`` in the above examples.  These IDs can
-be used with ``-k`` to select specific cases to run, and they will
+be used with :option:`-k` to select specific cases to run, and they will
 also identify the specific case when one is failing.  Running pytest
-with ``--collect-only`` will show the generated IDs.
+with :option:`--collect-only` will show the generated IDs.
 
 Numbers, strings, booleans and ``None`` will have their usual string
 representation used in the test ID. For other objects, pytest will
@@ -1414,7 +1419,7 @@ Running the above tests results in the following test IDs being used:
 
    $ pytest --collect-only
    =========================== test session starts ============================
-   platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y
+   platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y
    rootdir: /home/sweet/project
    collected 12 items
 
@@ -1469,7 +1474,7 @@ Running this test will *skip* the invocation of ``data_set`` with value ``2``:
 
     $ pytest test_fixture_marks.py -v
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y -- $PYTHON_PREFIX/bin/python
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y -- $PYTHON_PREFIX/bin/python
     cachedir: .pytest_cache
     rootdir: /home/sweet/project
     collecting ... collected 3 items
@@ -1519,7 +1524,7 @@ Here we declare an ``app`` fixture which receives the previously defined
 
     $ pytest -v test_appsetup.py
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y -- $PYTHON_PREFIX/bin/python
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y -- $PYTHON_PREFIX/bin/python
     cachedir: .pytest_cache
     rootdir: /home/sweet/project
     collecting ... collected 2 items
@@ -1599,7 +1604,7 @@ Let's run the tests in verbose mode and with looking at the print-output:
 
     $ pytest -v -s test_module.py
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y -- $PYTHON_PREFIX/bin/python
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y -- $PYTHON_PREFIX/bin/python
     cachedir: .pytest_cache
     rootdir: /home/sweet/project
     collecting ... collected 8 items
@@ -1731,14 +1736,13 @@ and you may specify fixture usage at the test module level using :globalvar:`pyt
 
 
 It is also possible to put fixtures required by all tests in your project
-into an ini-file:
+into a configuration file:
 
-.. code-block:: ini
+.. code-block:: toml
 
-    # content of pytest.ini
+    # content of pytest.toml
     [pytest]
-    usefixtures = cleandir
-
+    usefixtures = ["cleandir"]
 
 .. warning::
 

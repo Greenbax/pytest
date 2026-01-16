@@ -1,12 +1,12 @@
 # mypy: allow-untyped-defs
 from __future__ import annotations
 
+from collections.abc import Callable
 import dataclasses
 import os
 from pathlib import Path
 import stat
 import sys
-from typing import Callable
 from typing import cast
 import warnings
 
@@ -386,7 +386,7 @@ class TestNumberedDir:
         d = tmp_path.joinpath("test")
         d.mkdir()
         lockfile = create_cleanup_lock(d)
-        with pytest.raises(OSError, match="cannot create lockfile in .*"):
+        with pytest.raises(OSError, match=r"cannot create lockfile in .*"):
             create_cleanup_lock(d)
 
         lockfile.unlink()

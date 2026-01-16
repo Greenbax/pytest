@@ -49,7 +49,7 @@ Look through the `GitHub issues for bugs <https://github.com/pytest-dev/pytest/l
 See also the `"good first issue" issues <https://github.com/pytest-dev/pytest/labels/good%20first%20issue>`_
 that are friendly to new contributors.
 
-:ref:`Talk <contact>` to developers to find out how you can fix specific bugs. To indicate that you are going
+`Talk to developers <https://docs.pytest.org/en/stable/contact.html>`_ to find out how you can fix specific bugs. To indicate that you are going
 to work on a particular issue, add a comment to that effect on the specific issue.
 
 Don't forget to check the issue trackers of your favourite plugins, too!
@@ -61,7 +61,7 @@ Implement features
 
 Look through the `GitHub issues for enhancements <https://github.com/pytest-dev/pytest/labels/type:%20enhancement>`_.
 
-:ref:`Talk <contact>` to developers to find out how you can implement specific
+`Talk to developers <https://docs.pytest.org/en/stable/contact.html>`_ to find out how you can implement specific
 features.
 
 Write documentation
@@ -139,9 +139,8 @@ The objectives of the ``pytest-dev`` organisation are:
 * Sharing some of the maintenance responsibility (in case a maintainer no
   longer wishes to maintain a plugin)
 
-You can submit your plugin by subscribing to the `pytest-dev mail list
-<https://mail.python.org/mailman/listinfo/pytest-dev>`_ and writing a
-mail pointing to your existing pytest plugin repository which must have
+You can submit your plugin by posting a new topic in the `pytest-dev GitHub Discussions
+<https://github.com/pytest-dev/pytest/discussions>`_ pointing to your existing pytest plugin repository which must have
 the following:
 
 - PyPI presence with packaging metadata that contains a ``pytest-``
@@ -198,13 +197,13 @@ Short version
 #. Follow `PEP-8 <https://www.python.org/dev/peps/pep-0008/>`_ for naming.
 #. Tests are run using ``tox``::
 
-    tox -e linting,py39
+    tox -e linting,py313
 
    The test environments above are usually enough to cover most cases locally.
 
 #. Write a ``changelog`` entry: ``changelog/2574.bugfix.rst``, use issue id number
    and one of ``feature``, ``improvement``, ``bugfix``, ``doc``, ``deprecation``,
-   ``breaking``, ``vendor`` or ``trivial`` for the issue type.
+   ``breaking``, ``vendor``, ``packaging``, ``contrib``, or ``misc`` for the issue type.
 
 
 #. Unless your change is a trivial or a documentation fix (e.g., a typo or reword of a small section) please
@@ -270,24 +269,24 @@ Here is a simple overview, with pytest-specific bits:
 
 #. Run all the tests
 
-   You need to have Python 3.8 or later available in your system.  Now
+   You need to have a supported Python version available in your system.  Now
    running tests is as simple as issuing this command::
 
-    $ tox -e linting,py39
+    $ tox -e linting,py
 
-   This command will run tests via the "tox" tool against Python 3.9
-   and also perform "lint" coding-style checks.
+   This command will run tests via the "tox" tool against your default Python
+   version and also perform "lint" coding-style checks.
 
 #. You can now edit your local working copy and run the tests again as necessary. Please follow `PEP-8 <https://www.python.org/dev/peps/pep-0008/>`_ for naming.
 
-   You can pass different options to ``tox``. For example, to run tests on Python 3.9 and pass options to pytest
+   You can pass different options to ``tox``. For example, to run tests on Python 3.13 and pass options to pytest
    (e.g. enter pdb on failure) to pytest you can do::
 
-    $ tox -e py39 -- --pdb
+    $ tox -e py313 -- --pdb
 
-   Or to only run tests in a particular test module on Python 3.9::
+   Or to only run tests in a particular test module on Python 3.12::
 
-    $ tox -e py39 -- testing/test_config.py
+    $ tox -e py312 -- testing/test_config.py
 
 
    When committing, ``pre-commit`` will re-format the files if necessary.
@@ -306,8 +305,9 @@ Here is a simple overview, with pytest-specific bits:
 
 #. Create a new changelog entry in ``changelog``. The file should be named ``<issueid>.<type>.rst``,
    where *issueid* is the number of the issue related to the change and *type* is one of
-   ``feature``, ``improvement``, ``bugfix``, ``doc``, ``deprecation``, ``breaking``, ``vendor``
-   or ``trivial``. You may skip creating the changelog entry if the change doesn't affect the
+   ``feature``, ``improvement``, ``bugfix``, ``doc``, ``deprecation``, ``breaking``, ``vendor``,
+   ``packaging``, ``contrib``, or ``misc``.
+   You may skip creating the changelog entry if the change doesn't affect the
    documented behaviour of pytest.
 
 #. Add yourself to ``AUTHORS`` file if not there yet, in alphabetical order.

@@ -149,6 +149,7 @@ def test_unicode(pytester: Pytester) -> None:
     )
 
 
+@pytest.mark.skip("issue #13485")
 def test_works_with_filterwarnings(pytester: Pytester) -> None:
     """Ensure our warnings capture does not mess with pre-installed filters (#2430)."""
     pytester.makepyfile(
@@ -279,8 +280,7 @@ def test_warning_recorded_hook(pytester: Pytester) -> None:
         ("call warning", "runtest", "test_warning_recorded_hook.py::test_func"),
         ("teardown warning", "runtest", "test_warning_recorded_hook.py::test_func"),
     ]
-    assert len(collected) == len(expected)  # python < 3.10 zip(strict=True)
-    for collected_result, expected_result in zip(collected, expected):
+    for collected_result, expected_result in zip(collected, expected, strict=True):
         assert collected_result[0] == expected_result[0], str(collected)
         assert collected_result[1] == expected_result[1], str(collected)
         assert collected_result[2] == expected_result[2], str(collected)
@@ -382,7 +382,7 @@ def test_hide_pytest_internal_warnings(
 def test_option_precedence_cmdline_over_ini(
     pytester: Pytester, ignore_on_cmdline
 ) -> None:
-    """Filters defined in the command-line should take precedence over filters in ini files (#3946)."""
+    """Filters defined in the command-line should take precedence over filters in config files (#3946)."""
     pytester.makeini(
         """
         [pytest]
@@ -422,6 +422,33 @@ def test_option_precedence_mark(pytester: Pytester) -> None:
     )
     result = pytester.runpytest("-W", "ignore")
     result.stdout.fnmatch_lines(["* 1 failed in*"])
+
+
+def test_accept_unknown_category(pytester: Pytester) -> None:
+    """Category types that can't be imported don't cause failure (#13732)."""
+    pytester.makeini(
+        """
+        [pytest]
+        filterwarnings =
+            always:Failed to import filter module.*:pytest.PytestConfigWarning
+            ignore::foobar.Foobar
+    """
+    )
+    pytester.makepyfile(
+        """
+        def test():
+            pass
+    """
+    )
+    result = pytester.runpytest_subprocess("-W", "ignore::bizbaz.Bizbaz")
+    result.stdout.fnmatch_lines(
+        [
+            f"*== {WARNINGS_SUMMARY_HEADER} ==*",
+            "*PytestConfigWarning: Failed to import filter module 'foobar': ignore::foobar.Foobar",
+            "*PytestConfigWarning: Failed to import filter module 'bizbaz': ignore::bizbaz.Bizbaz",
+            "* 1 passed, * warning*",
+        ]
+    )
 
 
 class TestDeprecationWarningsByDefault:
@@ -511,8 +538,32 @@ class TestDeprecationWarningsByDefault:
         result = pytester.runpytest_subprocess()
         assert WARNINGS_SUMMARY_HEADER not in result.stdout.str()
 
+    def test_invalid_regex_in_filterwarning(self, pytester: Pytester) -> None:
+        self.create_file(pytester)
+        pytester.makeini(
+            """
+                [pytest]
+                filterwarnings =
+                    ignore::DeprecationWarning:*
+            """
+        )
+        result = pytester.runpytest_subprocess()
+        assert result.ret == pytest.ExitCode.USAGE_ERROR
+        result.stderr.fnmatch_lines(
+            [
+                "ERROR: while parsing the following warning configuration:",
+                "",
+                "  ignore::DeprecationWarning:[*]",
+                "",
+                "This error occurred:",
+                "",
+                "Invalid regex '[*]': nothing to repeat at position 0",
+            ]
+        )
 
-@pytest.mark.skip("not relevant until pytest 9.0")
+
+# In 9.1, uncomment below and change RemovedIn9 -> RemovedIn10.
+# @pytest.mark.skip("not relevant until pytest 10.0")
 @pytest.mark.parametrize("change_default", [None, "ini", "cmdline"])
 def test_removed_in_x_warning_as_error(pytester: Pytester, change_default) -> None:
     """This ensures that PytestRemovedInXWarnings raised by pytest are turned into errors.
@@ -691,10 +742,8 @@ class TestStackLevel:
         assert func == "<module>"  # the above conftest.py
         assert lineno == 4
 
-    def test_issue4445_preparse(self, pytester: Pytester, capwarn) -> None:
-        """#4445: Make sure the warning points to a reasonable location
-        See origin of _issue_warning_captured at: _pytest.config.__init__.py:910
-        """
+    def test_issue4445_initial_conftest(self, pytester: Pytester, capwarn) -> None:
+        """#4445: Make sure the warning points to a reasonable location."""
         pytester.makeconftest(
             """
             import nothing
@@ -710,7 +759,7 @@ class TestStackLevel:
 
         assert "could not load initial conftests" in str(warning.message)
         assert f"config{os.sep}__init__.py" in file
-        assert func == "_preparse"
+        assert func == "parse"
 
     @pytest.mark.filterwarnings("default")
     def test_conftest_warning_captured(self, pytester: Pytester) -> None:

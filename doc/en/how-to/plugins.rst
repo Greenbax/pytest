@@ -120,12 +120,21 @@ This means that any subsequent try to activate/load the named
 plugin will not work.
 
 If you want to unconditionally disable a plugin for a project, you can add
-this option to your ``pytest.ini`` file:
+this option to your configuration file:
 
-.. code-block:: ini
+.. tab:: toml
 
-      [pytest]
-      addopts = -p no:NAME
+    .. code-block:: toml
+
+        [pytest]
+        addopts = ["-p", "no:NAME"]
+
+.. tab:: ini
+
+    .. code-block:: ini
+
+        [pytest]
+        addopts = -p no:NAME
 
 Alternatively to disable it only in certain environments (for example in a
 CI server), you can set ``PYTEST_ADDOPTS`` environment variable to
@@ -133,4 +142,41 @@ CI server), you can set ``PYTEST_ADDOPTS`` environment variable to
 
 See :ref:`findpluginname` for how to obtain the name of a plugin.
 
-.. _`builtin plugins`:
+.. _`disable_plugin_autoload`:
+
+Disabling plugins from autoloading
+----------------------------------
+
+If you want to disable plugins from loading automatically, instead of requiring you to
+manually specify each plugin with :option:`-p` or :envvar:`PYTEST_PLUGINS`, you can use :option:`--disable-plugin-autoload` or :envvar:`PYTEST_DISABLE_PLUGIN_AUTOLOAD`.
+
+.. code-block:: bash
+
+   export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+   export PYTEST_PLUGINS=NAME,NAME2
+   pytest
+
+.. code-block:: bash
+
+   pytest --disable-plugin-autoload -p NAME,NAME2
+
+.. tab:: toml
+
+    .. code-block:: toml
+
+        [pytest]
+        addopts = ["--disable-plugin-autoload", "-p", "NAME", "-p", "NAME2"]
+
+.. tab:: ini
+
+    .. code-block:: ini
+
+        [pytest]
+        addopts =
+            --disable-plugin-autoload
+            -p NAME
+            -p NAME2
+
+.. versionadded:: 8.4
+
+   The :option:`--disable-plugin-autoload` command-line flag.

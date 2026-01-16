@@ -133,14 +133,22 @@ Releasing
 
 Both automatic and manual processes described above follow the same steps from this point onward.
 
-#. After all tests pass and the PR has been approved, trigger the ``deploy`` job
+#. After all tests pass and the PR has been approved, trigger the ``deploy`` workflow
    in https://github.com/pytest-dev/pytest/actions/workflows/deploy.yml, using the ``release-MAJOR.MINOR.PATCH`` branch
    as source.
+
+   Using the command-line::
+
+     $ gh workflow run deploy.yml -R pytest-dev/pytest --ref=release-{VERSION} -f version={VERSION}
 
    This job will require approval from ``pytest-dev/core``, after which it will publish to PyPI
    and tag the repository.
 
 #. Merge the PR. **Make sure it's not squash-merged**, so that the tagged commit ends up in the main branch.
+
+#. For major and minor releases (or the first prerelease of it),
+   in the `ReadTheDocs admin page <https://app.readthedocs.org/projects/pytest/>`__, click "Add Version" on the top right,
+   choose the new branch, then set the new version as active.
 
 #. Cherry-pick the CHANGELOG / announce files to the ``main`` branch::
 
@@ -158,17 +166,13 @@ Both automatic and manual processes described above follow the same steps from t
        git tag MAJOR.{MINOR+1}.0.dev0
        git push upstream MAJOR.{MINOR+1}.0.dev0
 
-#. For major and minor releases, change the default version in the `Read the Docs Settings <https://readthedocs.org/dashboard/pytest/advanced/>`_ to the new branch.
-
 #. Send an email announcement with the contents from::
 
      doc/en/announce/release-<VERSION>.rst
 
    To the following mailing lists:
 
-   * pytest-dev@python.org (all releases)
-   * python-announce-list@python.org (all releases)
-   * testing-in-python@lists.idyll.org (only major/minor releases)
+   * python-announce-list@python.org
 
    And announce it with the ``#pytest`` hashtag on:
 

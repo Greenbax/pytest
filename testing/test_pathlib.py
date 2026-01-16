@@ -1,6 +1,9 @@
 # mypy: allow-untyped-defs
 from __future__ import annotations
 
+from collections.abc import Generator
+from collections.abc import Iterator
+from collections.abc import Sequence
 import errno
 import importlib.abc
 import importlib.machinery
@@ -12,9 +15,6 @@ import sys
 from textwrap import dedent
 from types import ModuleType
 from typing import Any
-from typing import Generator
-from typing import Iterator
-from typing import Sequence
 import unittest.mock
 
 from _pytest.config import ExitCode
@@ -1624,7 +1624,7 @@ class TestNamespacePackages:
                 return None
 
         # Setup directories without configuring sys.path.
-        models_py, algorithms_py = self.setup_directories(
+        models_py, _algorithms_py = self.setup_directories(
             tmp_path, monkeypatch=None, pytester=pytester
         )
         com_root_1 = tmp_path / "src/dist1/com"

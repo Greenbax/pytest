@@ -5,15 +5,13 @@ and by builtin plugins."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
-from typing import Mapping
-from typing import Sequence
 from typing import TYPE_CHECKING
 
 from pluggy import HookspecMarker
-
-from .deprecated import HOOK_LEGACY_PATH_ARG
 
 
 if TYPE_CHECKING:
@@ -23,7 +21,6 @@ if TYPE_CHECKING:
 
     from _pytest._code.code import ExceptionInfo
     from _pytest._code.code import ExceptionRepr
-    from _pytest.compat import LEGACY_PATH
     from _pytest.config import _PluggyPlugin
     from _pytest.config import Config
     from _pytest.config import ExitCode
@@ -98,13 +95,13 @@ def pytest_plugin_registered(
 
 @hookspec(historic=True)
 def pytest_addoption(parser: Parser, pluginmanager: PytestPluginManager) -> None:
-    """Register argparse-style options and ini-style config values,
+    """Register argparse-style options and config-style config values,
     called once at the beginning of a test run.
 
     :param parser:
         To add command line options, call
         :py:func:`parser.addoption(...) <pytest.Parser.addoption>`.
-        To add ini-file values call :py:func:`parser.addini(...)
+        To add config-file values call :py:func:`parser.addini(...)
         <pytest.Parser.addini>`.
 
     :param pluginmanager:
@@ -119,7 +116,7 @@ def pytest_addoption(parser: Parser, pluginmanager: PytestPluginManager) -> None
       retrieve the value of a command line option.
 
     - :py:func:`config.getini(name) <pytest.Config.getini>` to retrieve
-      a value read from an ini-style file.
+      a value read from a configuration file.
 
     The config object is passed around on many internal objects via the ``.config``
     attribute or can be retrieved as the ``pytestconfig`` fixture.
@@ -251,8 +248,8 @@ def pytest_collection(session: Session) -> object | None:
 
       1. ``pytest_deselected(items)`` for any deselected items (may be called multiple times)
 
-    3. ``pytest_collection_finish(session)``
-    4. Set ``session.items`` to the list of collected items
+    3. Set ``session.items`` to the list of collected items
+    4. ``pytest_collection_finish(session)``
     5. Set ``session.testscollected`` to the number of collected items
 
     You can implement this hook to only perform some action before collection,
@@ -302,17 +299,8 @@ def pytest_collection_finish(session: Session) -> None:
     """
 
 
-@hookspec(
-    firstresult=True,
-    warn_on_impl_args={
-        "path": HOOK_LEGACY_PATH_ARG.format(
-            pylib_path_arg="path", pathlib_path_arg="collection_path"
-        ),
-    },
-)
-def pytest_ignore_collect(
-    collection_path: Path, path: LEGACY_PATH, config: Config
-) -> bool | None:
+@hookspec(firstresult=True)
+def pytest_ignore_collect(collection_path: Path, config: Config) -> bool | None:
     """Return ``True`` to ignore this path for collection.
 
     Return ``None`` to let other plugins ignore the path for collection.
@@ -333,7 +321,7 @@ def pytest_ignore_collect(
     .. versionchanged:: 7.0.0
         The ``collection_path`` parameter was added as a :class:`pathlib.Path`
         equivalent of the ``path`` parameter. The ``path`` parameter
-        has been deprecated.
+        has been deprecated and removed in pytest 9.0.0.
 
     Use in conftest plugins
     =======================
@@ -375,16 +363,7 @@ def pytest_collect_directory(path: Path, parent: Collector) -> Collector | None:
     """
 
 
-@hookspec(
-    warn_on_impl_args={
-        "path": HOOK_LEGACY_PATH_ARG.format(
-            pylib_path_arg="path", pathlib_path_arg="file_path"
-        ),
-    },
-)
-def pytest_collect_file(
-    file_path: Path, path: LEGACY_PATH, parent: Collector
-) -> Collector | None:
+def pytest_collect_file(file_path: Path, parent: Collector) -> Collector | None:
     """Create a :class:`~pytest.Collector` for the given path, or None if not relevant.
 
     For best results, the returned collector should be a subclass of
@@ -399,7 +378,7 @@ def pytest_collect_file(
     .. versionchanged:: 7.0.0
         The ``file_path`` parameter was added as a :class:`pathlib.Path`
         equivalent of the ``path`` parameter. The ``path`` parameter
-        has been deprecated.
+        has been deprecated and removed in pytest 9.0.0.
 
     Use in conftest plugins
     =======================
@@ -501,17 +480,8 @@ def pytest_make_collect_report(collector: Collector) -> CollectReport | None:
 # -------------------------------------------------------------------------
 
 
-@hookspec(
-    firstresult=True,
-    warn_on_impl_args={
-        "path": HOOK_LEGACY_PATH_ARG.format(
-            pylib_path_arg="path", pathlib_path_arg="module_path"
-        ),
-    },
-)
-def pytest_pycollect_makemodule(
-    module_path: Path, path: LEGACY_PATH, parent
-) -> Module | None:
+@hookspec(firstresult=True)
+def pytest_pycollect_makemodule(module_path: Path, parent) -> Module | None:
     """Return a :class:`pytest.Module` collector or None for the given path.
 
     This hook will be called for each matching test module path.
@@ -526,9 +496,8 @@ def pytest_pycollect_makemodule(
 
     .. versionchanged:: 7.0.0
         The ``module_path`` parameter was added as a :class:`pathlib.Path`
-        equivalent of the ``path`` parameter.
-
-        The ``path`` parameter has been deprecated in favor of ``fspath``.
+        equivalent of the ``path`` parameter. The ``path`` parameter has been
+        deprecated in favor of ``module_path`` and removed in pytest 9.0.0.
 
     Use in conftest plugins
     =======================
@@ -998,13 +967,22 @@ def pytest_assertion_pass(item: Item, lineno: int, orig: str, expl: str) -> None
     and the pytest introspected assertion information is available in the
     `expl` string.
 
-    This hook must be explicitly enabled by the ``enable_assertion_pass_hook``
-    ini-file option:
+    This hook must be explicitly enabled by the :confval:`enable_assertion_pass_hook`
+    configuration option:
 
-    .. code-block:: ini
+    .. tab:: toml
 
-        [pytest]
-        enable_assertion_pass_hook=true
+        .. code-block:: toml
+
+            [pytest]
+            enable_assertion_pass_hook = true
+
+    .. tab:: ini
+
+        .. code-block:: ini
+
+            [pytest]
+            enable_assertion_pass_hook = true
 
     You need to **clean the .pyc** files in your project directory and interpreter libraries
     when enabling this option, as assertions will require to be re-written.
@@ -1027,16 +1005,7 @@ def pytest_assertion_pass(item: Item, lineno: int, orig: str, expl: str) -> None
 # -------------------------------------------------------------------------
 
 
-@hookspec(
-    warn_on_impl_args={
-        "startdir": HOOK_LEGACY_PATH_ARG.format(
-            pylib_path_arg="startdir", pathlib_path_arg="start_path"
-        ),
-    },
-)
-def pytest_report_header(  # type:ignore[empty-body]
-    config: Config, start_path: Path, startdir: LEGACY_PATH
-) -> str | list[str]:
+def pytest_report_header(config: Config, start_path: Path) -> str | list[str]:  # type: ignore[empty-body]
     """Return a string or list of strings to be displayed as header info for terminal reporting.
 
     :param config: The pytest config object.
@@ -1054,7 +1023,7 @@ def pytest_report_header(  # type:ignore[empty-body]
     .. versionchanged:: 7.0.0
         The ``start_path`` parameter was added as a :class:`pathlib.Path`
         equivalent of the ``startdir`` parameter. The ``startdir`` parameter
-        has been deprecated.
+        has been deprecated and removed in pytest 9.0.0.
 
     Use in conftest plugins
     =======================
@@ -1063,17 +1032,9 @@ def pytest_report_header(  # type:ignore[empty-body]
     """
 
 
-@hookspec(
-    warn_on_impl_args={
-        "startdir": HOOK_LEGACY_PATH_ARG.format(
-            pylib_path_arg="startdir", pathlib_path_arg="start_path"
-        ),
-    },
-)
-def pytest_report_collectionfinish(  # type:ignore[empty-body]
+def pytest_report_collectionfinish(  # type: ignore[empty-body]
     config: Config,
     start_path: Path,
-    startdir: LEGACY_PATH,
     items: Sequence[Item],
 ) -> str | list[str]:
     """Return a string or list of strings to be displayed after collection
@@ -1099,7 +1060,7 @@ def pytest_report_collectionfinish(  # type:ignore[empty-body]
     .. versionchanged:: 7.0.0
         The ``start_path`` parameter was added as a :class:`pathlib.Path`
         equivalent of the ``startdir`` parameter. The ``startdir`` parameter
-        has been deprecated.
+        has been deprecated and removed in pytest 9.0.0.
 
     Use in conftest plugins
     =======================

@@ -45,8 +45,6 @@ The ``pytest`` framework makes it easy to write small, readable tests, and can
 scale to support complex functional testing for applications and libraries.
 
 
-``pytest`` requires: Python 3.8+ or PyPy3.
-
 **PyPI package name**: :pypi:`pytest`
 
 A quick example
@@ -69,7 +67,7 @@ To execute it:
 
     $ pytest
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y
     rootdir: /home/sweet/project
     collected 1 item
 
@@ -103,7 +101,7 @@ Features
 
 - Can run :ref:`unittest <unittest>` (including trial) test suites out of the box
 
-- Python 3.8+ or PyPy 3
+- Python 3.10+ or PyPy 3
 
 - Rich plugin architecture, with over 1300+ :ref:`external plugins <plugin-list>` and thriving community
 

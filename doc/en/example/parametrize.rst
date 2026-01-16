@@ -83,9 +83,9 @@ Different options for test IDs
 ------------------------------------
 
 pytest will build a string that is the test ID for each set of values in a
-parametrized test. These IDs can be used with ``-k`` to select specific cases
+parametrized test. These IDs can be used with :option:`-k` to select specific cases
 to run, and they will also identify the specific case when one is failing.
-Running pytest with ``--collect-only`` will show the generated IDs.
+Running pytest with :option:`--collect-only` will show the generated IDs.
 
 Numbers, strings, booleans and None will have their usual string representation
 used in the test ID. For other objects, pytest will make a string based on
@@ -158,7 +158,7 @@ objects, they are still using the default pytest representation:
 
     $ pytest test_time.py --collect-only
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y
     rootdir: /home/sweet/project
     collected 8 items
 
@@ -221,7 +221,7 @@ this is a fully self-contained example which you can run with:
 
     $ pytest test_scenarios.py
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y
     rootdir: /home/sweet/project
     collected 4 items
 
@@ -235,7 +235,7 @@ If you just collect tests you'll also nicely see 'advanced' and 'basic' as varia
 
     $ pytest --collect-only test_scenarios.py
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y
     rootdir: /home/sweet/project
     collected 4 items
 
@@ -314,7 +314,7 @@ Let's first see how it looks like at collection time:
 
     $ pytest test_backends.py --collect-only
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y
     rootdir: /home/sweet/project
     collected 2 items
 
@@ -352,7 +352,7 @@ The first invocation with ``db == "DB1"`` passed while the second with ``db == "
 Indirect parametrization
 ---------------------------------------------------
 
-Using the ``indirect=True`` parameter when parametrizing a test allows to
+Using the ``indirect=True`` parameter when parametrizing a test allows one to
 parametrize a test with a fixture receiving the values before passing them to a
 test:
 
@@ -413,7 +413,7 @@ The result of this test will be successful:
 
     $ pytest -v test_indirect_list.py
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y -- $PYTHON_PREFIX/bin/python
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y -- $PYTHON_PREFIX/bin/python
     cachedir: .pytest_cache
     rootdir: /home/sweet/project
     collecting ... collected 1 item
@@ -568,7 +568,7 @@ If you run this with reporting for skips enabled:
 
     $ pytest -rs test_module.py
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y
     rootdir: /home/sweet/project
     collected 2 items
 
@@ -629,7 +629,7 @@ Then run ``pytest`` with verbose mode and with only the ``basic`` marker:
 
     $ pytest -v -m basic
     =========================== test session starts ============================
-    platform linux -- Python 3.x.y, pytest-8.x.y, pluggy-1.x.y -- $PYTHON_PREFIX/bin/python
+    platform linux -- Python 3.x.y, pytest-9.x.y, pluggy-1.x.y -- $PYTHON_PREFIX/bin/python
     cachedir: .pytest_cache
     rootdir: /home/sweet/project
     collecting ... collected 24 items / 21 deselected / 3 selected

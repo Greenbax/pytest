@@ -5,7 +5,8 @@ import dataclasses
 import importlib.metadata
 import re
 import sys
-from typing import Generator
+
+from packaging.version import Version
 
 from packaging.version import Version
 
@@ -112,7 +113,7 @@ def tw_mock():
         def _write_source(self, lines, indents=()):
             if not indents:
                 indents = [""] * len(lines)
-            for indent, line in zip(indents, lines):
+            for indent, line in zip(indents, lines, strict=True):
                 self.line(indent + line)
 
         def line(self, line, **kw):
@@ -233,24 +234,20 @@ def mock_timing(monkeypatch: MonkeyPatch):
     Time is static, and only advances through `sleep` calls, thus tests might sleep over large
     numbers and obtain accurate time() calls at the end, making tests reliable and instant.
     """
-
-    @dataclasses.dataclass
-    class MockTiming:
-        _current_time: float = 1590150050.0
-
-        def sleep(self, seconds: float) -> None:
-            self._current_time += seconds
-
-        def time(self) -> float:
-            return self._current_time
-
-        def patch(self) -> None:
-            from _pytest import timing
-
-            monkeypatch.setattr(timing, "sleep", self.sleep)
-            monkeypatch.setattr(timing, "time", self.time)
-            monkeypatch.setattr(timing, "perf_counter", self.time)
+    from _pytest.timing import MockTiming
 
     result = MockTiming()
-    result.patch()
+    result.patch(monkeypatch)
     return result
+
+
+@pytest.fixture(autouse=True)
+def remove_ci_env_var(monkeypatch: MonkeyPatch, request: pytest.FixtureRequest) -> None:
+    """Make the test insensitive if it is running in CI or not.
+
+    Use `@pytest.mark.keep_ci_var` in a test to avoid applying this fixture, letting the test
+    see the real `CI` variable (if present).
+    """
+    has_keep_ci_mark = request.node.get_closest_marker("keep_ci_var") is not None
+    if not has_keep_ci_mark:
+        monkeypatch.delenv("CI", raising=False)

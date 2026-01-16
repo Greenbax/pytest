@@ -2,20 +2,21 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import decimal
 from decimal import Decimal
 from fractions import Fraction
+from math import inf
+from math import nan
 from math import sqrt
 import operator
 from operator import eq
 from operator import ne
+import re
 
 from _pytest.pytester import Pytester
 from _pytest.python_api import _recursive_sequence_map
 import pytest
 from pytest import approx
-
-
-inf, nan = float("inf"), float("nan")
 
 
 @pytest.fixture
@@ -76,7 +77,7 @@ def assert_approx_raises_regex(pytestconfig):
         )
 
         for i, (obtained_line, expected_line) in enumerate(
-            zip(obtained_message, expected_message)
+            zip(obtained_message, expected_message, strict=True)
         ):
             regex = re.compile(expected_line)
             assert regex.match(obtained_line) is not None, (
@@ -92,6 +93,7 @@ def assert_approx_raises_regex(pytestconfig):
 
 SOME_FLOAT = r"[+-]?((?:([0-9]*[.])?[0-9]+(e-?[0-9]+)?)|inf|nan)\s*"
 SOME_INT = r"[0-9]+\s*"
+SOME_TOLERANCE = rf"({SOME_FLOAT}|[+-]?[0-9]+(\.[0-9]+)?[eE][+-]?[0-9]+\s*)"
 
 
 class TestApprox:
@@ -116,7 +118,7 @@ class TestApprox:
                 "",
                 "  comparison failed",
                 f"  Obtained: {SOME_FLOAT}",
-                f"  Expected: {SOME_FLOAT} ± {SOME_FLOAT}",
+                f"  Expected: {SOME_FLOAT} ± {SOME_TOLERANCE}",
             ],
         )
 
@@ -132,9 +134,9 @@ class TestApprox:
                 r"  comparison failed. Mismatched elements: 2 / 3:",
                 rf"  Max absolute difference: {SOME_FLOAT}",
                 rf"  Max relative difference: {SOME_FLOAT}",
-                r"  Index \| Obtained\s+\| Expected           ",
-                rf"  a     \| {SOME_FLOAT} \| {SOME_FLOAT} ± {SOME_FLOAT}",
-                rf"  c     \| {SOME_FLOAT} \| {SOME_FLOAT} ± {SOME_FLOAT}",
+                r"  Index \| Obtained\s+\| Expected\s+",
+                rf"  a     \| {SOME_FLOAT} \| {SOME_FLOAT} ± {SOME_TOLERANCE}",
+                rf"  c     \| {SOME_FLOAT} \| {SOME_FLOAT} ± {SOME_TOLERANCE}",
             ],
         )
 
@@ -347,6 +349,11 @@ class TestApprox:
             "approx({'b': 2.0 ± 2.0e-06, 'a': 1.0 ± 1.0e-06})",
         )
 
+        assert repr(approx(42, abs=1)) == "42 ± 1"
+        assert repr(approx(5, rel=0.01)) == "5 ± 0.05"
+        assert repr(approx(24000, abs=500)) == "24000 ± 500"
+        assert repr(approx(1500, abs=555)) == "1500 ± 555"
+
     def test_repr_complex_numbers(self):
         assert repr(approx(inf + 1j)) == "(inf+1j)"
         assert repr(approx(1.0j, rel=inf)) == "1j ± inf"
@@ -360,7 +367,7 @@ class TestApprox:
         assert repr(approx(3 + 4 * 1j)) == "(3+4j) ± 5.0e-06 ∠ ±180°"
 
         # absolute tolerance is not scaled
-        assert repr(approx(3.3 + 4.4 * 1j, abs=0.02)) == "(3.3+4.4j) ± 2.0e-02 ∠ ±180°"
+        assert repr(approx(3.3 + 4.4 * 1j, abs=0.02)) == "(3.3+4.4j) ± 0.02 ∠ ±180°"
 
     @pytest.mark.parametrize(
         "value, expected_repr_string",
@@ -383,6 +390,37 @@ class TestApprox:
             assert approx(1)
 
         assert err.match(r"approx\(\) is not supported in a boolean context")
+
+    def test_mixed_sequence(self, assert_approx_raises_regex) -> None:
+        """Approx should work on sequences that also contain non-numbers (#13010)."""
+        assert_approx_raises_regex(
+            [1.1, 2, "word"],
+            [1.0, 2, "different"],
+            [
+                "",
+                r"  comparison failed. Mismatched elements: 2 / 3:",
+                rf"  Max absolute difference: {SOME_FLOAT}",
+                rf"  Max relative difference: {SOME_FLOAT}",
+                r"  Index \| Obtained\s+\| Expected\s+",
+                r"\s*0\s*\|\s*1\.1\s*\|\s*1\.0\s*±\s*1\.0e\-06\s*",
+                r"\s*2\s*\|\s*word\s*\|\s*different\s*",
+            ],
+            verbosity_level=2,
+        )
+        assert_approx_raises_regex(
+            [1.1, 2, "word"],
+            [1.0, 2, "word"],
+            [
+                "",
+                r"  comparison failed. Mismatched elements: 1 / 3:",
+                rf"  Max absolute difference: {SOME_FLOAT}",
+                rf"  Max relative difference: {SOME_FLOAT}",
+                r"  Index \| Obtained\s+\| Expected\s+",
+                r"\s*0\s*\|\s*1\.1\s*\|\s*1\.0\s*±\s*1\.0e\-06\s*",
+            ],
+            verbosity_level=2,
+        )
+        assert [1.1, 2, "word"] == pytest.approx([1.1, 2, "word"])
 
     def test_operator_overloading(self):
         assert 1 == approx(1, rel=1e-6, abs=1e-12)
@@ -694,6 +732,17 @@ class TestApprox:
             ],
         )
 
+    def test_dict_differing_lengths(self, assert_approx_raises_regex):
+        assert_approx_raises_regex(
+            {"a": 0},
+            {"a": 0, "b": 1},
+            [
+                "  ",
+                r"  Impossible to compare mappings with different sizes\.",
+                r"  Lengths: 2 and 1",
+            ],
+        )
+
     def test_numpy_array(self):
         np = pytest.importorskip("numpy")
 
@@ -893,7 +942,7 @@ class TestApprox:
         ],
     )
     def test_nonnumeric_false_if_unequal(self, x):
-        """For nonnumeric types, x != pytest.approx(y) reduces to x != y"""
+        """For non-numeric types, x != pytest.approx(y) reduces to x != y"""
         assert "ab" != approx("abc")
         assert ["ab"] != approx(["abc"])
         # in particular, both of these should return False
@@ -969,6 +1018,11 @@ class TestApprox:
         expected_repr = "approx([1 ± 1.0e-06, 2 ± 2.0e-06, 3 ± 3.0e-06, 4 ± 4.0e-06])"
         assert repr(approx(expected)) == expected_repr
 
+    def test_decimal_approx_repr(self, monkeypatch) -> None:
+        monkeypatch.setitem(decimal.getcontext().traps, decimal.FloatOperation, True)
+        approx_obj = pytest.approx(decimal.Decimal("2.60"))
+        assert decimal.Decimal("2.600001") == approx_obj
+
     def test_allow_ordered_sequences_only(self) -> None:
         """pytest.approx() should raise an error on unordered sequences (#9692)."""
         with pytest.raises(TypeError, match="only supports ordered sequences"):
@@ -984,6 +1038,20 @@ class TestApprox:
 
         assert b == pytest.approx(a, abs=2)
         assert b != pytest.approx(a, abs=0.5)
+
+    def test_approx_dicts_with_mismatch_on_keys(self) -> None:
+        """https://github.com/pytest-dev/pytest/issues/13816"""
+        expected = {"a": 1, "b": 3}
+        actual = {"a": 1, "c": 3}
+
+        with pytest.raises(
+            AssertionError,
+            match=re.escape(
+                "comparison failed.\n  Mappings has different keys: "
+                "expected dict_keys(['a', 'b']) but got dict_keys(['a', 'c'])"
+            ),
+        ):
+            assert actual == approx(expected)
 
 
 class MyVec3:  # incomplete
@@ -1033,10 +1101,10 @@ class TestRecursiveSequenceMap:
         ]
 
     def test_map_over_mixed_sequence(self):
-        assert _recursive_sequence_map(sqrt, [4, (25, 64), [(49)]]) == [
+        assert _recursive_sequence_map(sqrt, [4, (25, 64), [49]]) == [
             2,
             (5, 8),
-            [(7)],
+            [7],
         ]
 
     def test_map_over_sequence_like(self):
